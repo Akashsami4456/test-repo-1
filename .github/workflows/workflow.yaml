@@ -1,58 +1,87 @@
-name: main
+name: example-custom-ci-build-id
 on:
   push:
     branches:
       - 'master'
   pull_request:
+  workflow_dispatch:
+
+env:
+  CYPRESS_PROJECT_ID: ${{ secrets.EXAMPLE_PROJECT_ID }}
+  CYPRESS_RECORD_KEY: ${{ secrets.EXAMPLE_RECORDING_KEY }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
-  build-and-test:
-    runs-on: ubuntu-24.04
-    name: Build and test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          # Action runs: using: node20 as defined in
-          # https://github.com/cypress-io/github-action/blob/master/action.yml
-          # Node.js minor version is aligned to
-          # https://github.com/actions/runner/blob/main/src/Misc/externals.sh
-          node-version: 20.18.0
-      - run: npm ci
-      - run: npm run format
-      - run: npm run build
-      - run: npm run lint
 
-  release:
+  check-record-key:
     runs-on: ubuntu-24.04
-    name: release
-    needs: [build-and-test]
-    # only release from the master branch
-    # in parent repository, not in a fork
-    if: (github.ref == 'refs/heads/master') &&
-      (github.repository == 'cypress-io/github-action')
+    outputs:
+      record-key-exists: ${{ steps.record-key-check.outputs.defined }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - run: npm ci
-      # https://github.com/cycjimmy/semantic-release-action
-      - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v4
-        id: semantic
-        with:
-          # https://github.com/semantic-release/semantic-release
-          semantic_version: 24.1.0
-          branches: master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Check for record key
+        id: record-key-check
+        run: |
+          if [ "${{ secrets.EXAMPLE_RECORDING_KEY }}" != '' ]; then
+            echo "defined=true" >> $GITHUB_OUTPUT;
+          else
+            echo "defined=false" >> $GITHUB_OUTPUT;
+          fi
 
-      - name: Push updates to branch for major version
-        # if there is a new version published, let's say v1.2.3
-        # then this step will update branch "v1" to this commit
-        # https://github.com/cypress-io/github-action/branches
-        if: steps.semantic.outputs.new_release_published == 'true'
-        run: 'git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git HEAD:refs/heads/v${{steps.semantic.outputs.new_release_major_version}}'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # single job that generates and outputs a common id
+  prepare:
+    needs: [check-record-key]
+    runs-on: ubuntu-24.04
+    if: needs.check-record-key.outputs.record-key-exists == 'true'
+    outputs:
+      uuid: ${{ steps.uuid.outputs.value }}
+    steps:
+      - name: Generate unique ID 💎
+        id: uuid
+        run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
+
+      - name: Print unique ID 🖨`
+        run: echo "generated id ${{ steps.uuid.outputs.value }}"
+  smoke-tests:
+    needs: [prepare]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@v4
+
+      - name: Print custom build id 🖨
+        run: echo "Custom build id is ${{ needs.prepare.outputs.uuid }}"
+
+      - name: Smoke tests using custom build id 🧪
+        uses: ./
+        with:
+          # run just some specs in this group
+          # we can pass the build id using action parameters
+          record: true
+          parallel: true
+          group: '1 - smoke tests'
+          ci-build-id: ${{ needs.prepare.outputs.uuid }}
+          spec: 'cypress/e2e/spec-a.cy.js'
+          working-directory: examples/recording
+  all-tests:
+    needs: [prepare, smoke-tests]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # run 3 copies of the current job in parallel
+        containers: [1, 2, 3]
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@v4
+
+      - name: Print custom build id 🖨
+        run: echo "Custom build id is ${{ needs.prepare.outputs.uuid }}"
+
+      - name: All tests using custom build id 🧪
+        uses: ./
+        with:
+          command: |
+            npx cypress run --record --parallel \
+              --ci-build-id ${{ needs.prepare.outputs.uuid }} \
+              --group "2 - all tests"
+          working-directory: examples/recording

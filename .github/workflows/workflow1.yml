@@ -1,17 +1,13 @@
-name: Branch-Specific Push Workflow
+name: Basic Push Workflow
 
-on:
-  push:
-    branches:
-      - main
-      - develop
+on: push
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
       
-      - name: Run Tests
-        run: echo "Running tests on push to main or develop"
+      - name: Print Hello
+        run: echo "Hello from GitHub Actions!"

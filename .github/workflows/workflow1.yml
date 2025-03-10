@@ -1,19 +1,39 @@
-name: example-cron
+name: Test Workflow
 on:
+  push:
+    branches:
+      - "main"
+  discussion_comment:
+    types: [created, deleted]
+  fork:
   schedule:
-    # runs tests every day at 4am
-    - cron: '0 4 * * *'
-    - cron: '0 8 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
-jobs:
-  nightly:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Cypress nightly tests 🌃
-        uses: ./
-        with:
-          working-directory: examples/basic
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build Project
+        run: go build ./...
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [build]   # Depends on 'build' job
+    steps:
+      - name: Run Tests
+        run: go test ./...
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, test]   # Depends on both 'build' and 'test' jobs
+    steps:
+      - name: Deploy
+        run: echo "Deploying to production..."
+
+
+
+

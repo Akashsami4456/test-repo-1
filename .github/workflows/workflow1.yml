@@ -1,8 +1,5 @@
 name: Test Workflow
-on:
- discussion_comment:
-    types: [created, deleted]
-
+on: issue_comment
 
 jobs:
   build:

@@ -1,9 +1,7 @@
 name: Basic Push Workflow
 
 on: 
-  push:
-    branch:
-      - main
+  push
 
 jobs:
   build:

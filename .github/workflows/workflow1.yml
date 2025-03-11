@@ -1,5 +1,6 @@
 name: workflow
-on: [push]
+on: 
+  push
 jobs:
 # main
   check-bats-version:

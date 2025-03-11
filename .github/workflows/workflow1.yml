@@ -1,11 +1,21 @@
-name: 'Handle Comment Workflow'
+name: example-webpack
 on:
-  issue_comment:
-    types:
-      - created
+  push:
+    branches:
+      - 'master'
+  pull_request:
+  workflow_dispatch:
+
 jobs:
-  closed-issue-comment:
-    # skip in fork
-    if: github.repository == 'cypress-io/github-action'
-    uses: cypress-io/cypress/.github/workflows/triage_handle_new_comments.yml@develop
-    secrets: inherit
+  wait:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cypress tests
+        uses: ./
+        with:
+          working-directory: examples/webpack
+          start: npm start
+          wait-on: 'http://localhost:8080'

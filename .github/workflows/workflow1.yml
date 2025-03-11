@@ -1,10 +1,5 @@
 name: example-cron
-on:
-  schedule:
-    # runs tests every day at 4am
-    - cron: '0 4 * * *'
-  workflow_dispatch:
-
+on: issue_comment
 jobs:
   nightly:
     runs-on: ubuntu-24.04

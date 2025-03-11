@@ -1,14 +1,11 @@
-name: Basic Push Workflow
-
-on: 
-  push
-
+name: 'Handle Comment Workflow'
+on:
+  issue_comment:
+    types:
+      - created
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Print Hello
-        run: echo "Hello from GitHub Actions!"
+  closed-issue-comment:
+    # skip in fork
+    if: github.repository == 'cypress-io/github-action'
+    uses: cypress-io/cypress/.github/workflows/triage_handle_new_comments.yml@develop
+    secrets: inherit

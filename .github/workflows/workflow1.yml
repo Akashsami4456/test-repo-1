@@ -1,21 +1,14 @@
-name: example-webpack
+name: 'Add issue/PR to Triage Board'
 on:
-  push:
-    branches:
-      - 'master'
-  pull_request:
-  workflow_dispatch:
-
+  issues:
+    types:
+      - opened
+  pull_request_target:
+    types:
+      - opened
 jobs:
-  wait:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Cypress tests
-        uses: ./
-        with:
-          working-directory: examples/webpack
-          start: npm start
-          wait-on: 'http://localhost:8080'
+  add-to-triage-project-board:
+    # skip in fork
+    if: github.repository == 'cypress-io/github-action'
+    uses: cypress-io/cypress/.github/workflows/triage_add_to_project.yml@develop
+    secrets: inherit
